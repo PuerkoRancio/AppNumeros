@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconocimiento de Dígitos</title>
+    <link rel="stylesheet" href="C:\Users\ubbos\Documents\Cienca de datos\app_numeros\static\styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Reconocimiento de Dígitos Manuscritos</h1>
+        
+        <div class="drawing-area">
+            <canvas id="canvas" width="280" height="280"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="predict-btn">Predecir</button>
+            <button id="clear-btn">Limpiar</button>
+        </div>
+        
+        <div class="result">
+            <h2>Predicción: <span id="prediction">-</span></h2>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        
+        // Configuración inicial del canvas
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 15;
+        ctx.lineCap = 'round';
+        
+        // Eventos para dibujar
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Eventos táctiles para dispositivos móviles
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        canvas.addEventListener('touchend', stopDrawing);
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(
+                e.type === 'touchstart' ? 'mousedown' : 'mousemove',
+                {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                }
+            );
+            canvas.dispatchEvent(mouseEvent);
+        }
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+        
+        // Botón de limpiar
+        document.getElementById('clear-btn').addEventListener('click', function() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('prediction').textContent = '-';
+        });
+        
+        // Botón de predecir
+        document.getElementById('predict-btn').addEventListener('click', function() {
+            // Obtener la imagen del canvas
+            const imageData = canvas.toDataURL('image/png');
+            
+            // Enviar al servidor para predicción
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `image=${encodeURIComponent(imageData)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('prediction').textContent = data.digit;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
